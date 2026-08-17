@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hollow Knight Style Prototype</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #0b0e14;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      color: #fff;
+      font-family: sans-serif;
+      overflow: hidden;
+    }
+    #gameContainer {
+      text-align: center;
+    }
+    canvas {
+      border: 2px solid #2a3447;
+      box-shadow: 0 0 20px rgba(0, 0, 0, 0.8);
+      background: #121824;
+    }
+    .controls-info {
+      margin-top: 10px;
+      font-size: 14px;
+      color: #8a9ba8;
+    }
+  </style>
+</head>
+<body>
+
+<div id="gameContainer">
+  <canvas id="gameCanvas" width="800" height="400"></canvas>
+  <div class="controls-info">
+    <strong>Controls:</strong> A / D = Move | W / Space = Jump | J = Attack
+  </div>
+</div>
+
+<script>
+  const canvas = document.getElementById('gameCanvas');
+  const ctx = canvas.getContext('2d');
+
+  // Input Handling
+  const keys = {};
+  window.addEventListener('keydown', e => keys[e.key.toLowerCase()] = true);
+  window.addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
+
+  // Player Object
+  const player = {
+    x: 100,
+    y: 300,
+    width: 24,
+    height: 36,
+    color: '#e0e6ed', // Pale knight look
+    vx: 0,
+    vy: 0,
+    speed: 4,
+    jumpStrength: -11,
+    grounded: false,
+    facing: 'right',
+    isAttacking: false,
+    attackTimer: 0,
+    attackBox: { width: 40, height: 30 }
+  };
+
+  // Enemy Object
+  const enemy = {
+    x: 500,
+    y: 310,
+    width: 30,
+    height: 30,
+    color: '#8b0000',
+    hp: 3,
+    isHit: false,
+    hitTimer: 0
+  };
+
+  // Environment
+  const gravity = 0.5;
+  const floorY = 340;
+
+  function update() {
+    // Horizontal Movement
+    if (keys['a']) {
+      player.vx = -player.speed;
+      player.facing = 'left';
+    } else if (keys['d']) {
+      player.vx = player.speed;
+      player.facing = 'right';
+    } else {
+      player.vx = 0;
+    }
+
+    // Jumping
+    if ((keys['w'] || keys[' ']) && player.grounded) {
+      player.vy = player.jumpStrength;
+      player.grounded = false;
+    }
+
+    // Attack Action
+    if (keys['j'] && !player.isAttacking) {
+      player.isAttacking = true;
+      player.attackTimer = 12; // Frames attack lasts
+    }
+
+    if (player.isAttacking) {
+      player.attackTimer--;
+      if (player.attackTimer <= 0) {
+        player.isAttacking = false;
+      }
+    }
+
+    // Apply Physics
+    player.vy += gravity;
+    player.x += player.vx;
+    player.y += player.vy;
+
+    // Floor Collision
+    if (player.y + player.height >= floorY) {
+      player.y = floorY - player.height;
+      player.vy = 0;
+      player.grounded = true;
+    }
+
+    // Attack Hit Detection on Enemy
+    if (player.isAttacking && enemy.hp > 0 && enemy.hitTimer === 0) {
+      let attackX = player.facing === 'right' 
+        ? player.x + player.width 
+        : player.x - player.attackBox.width;
+
+      if (
+        attackX < enemy.x + enemy.width &&
+        attackX + player.attackBox.width > enemy.x &&
+        player.y < enemy.y + enemy.height &&
+        player.y + player.attackBox.height > enemy.y
+      ) {
+        enemy.hp--;
+        enemy.hitTimer = 15; // Invulnerability frames
+        // Slight recoil
+        enemy.x += player.facing === 'right' ? 15 : -15;
+      }
+    }
+
+    if (enemy.hitTimer > 0) enemy.hitTimer--;
+  }
+
+  function draw() {
+    // Clear Screen
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Draw Background Atmosphere (Simple Gradient Ground)
+    ctx.fillStyle = '#0a0d12';
+    ctx.fillRect(0, floorY, canvas.width, canvas.height - floorY);
+
+    ctx.strokeStyle = '#2a3447';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(0, floorY);
+    ctx.lineTo(canvas.width, floorY);
+    ctx.stroke();
+
+    // Draw Enemy
+    if (enemy.hp > 0) {
+      ctx.fillStyle = enemy.hitTimer > 0 ? '#ff6b6b' : enemy.color;
+      ctx.fillRect(enemy.x, enemy.y, enemy.width, enemy.height);
+
+      // Enemy Health Bar
+      ctx.fillStyle = '#ff0000';
+      ctx.fillRect(enemy.x, enemy.y - 10, (enemy.width / 3) * enemy.hp, 4);
+    }
+
+    // Draw Player
+    ctx.fillStyle = player.color;
+    ctx.fillRect(player.x, player.y, player.width, player.height);
+
+    // Draw Mask/Eyes (Hollow Knight detail)
+    ctx.fillStyle = '#000';
+    let eyeOffsetX = player.facing === 'right' ? 12 : 4;
+    ctx.fillRect(player.x + eyeOffsetX, player.y + 8, 4, 8);
+
+    // Draw Attack (Nail Swing)
+    if (player.isAttacking) {
+      ctx.fillStyle = 'rgba(224, 230, 237, 0.7)';
+      let attackX = player.facing === 'right' 
+        ? player.x + player.width 
+        : player.x - player.attackBox.width;
+
+      ctx.fillRect(attackX, player.y + 5, player.attackBox.width, player.attackBox.height);
+    }
+  }
+
+  function loop() {
+    update();
+    draw();
+    requestAnimationFrame(loop);
+  }
+
+  loop();
+</script>
+</body>
+</html>
