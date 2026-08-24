@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>2D Action Game - Chasing Enemies</title>
+    <title>2D Action Game - Weapon Recoil</title>
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
     <style>
         body {
@@ -32,7 +32,6 @@ class MainScene extends Phaser.Scene {
         this.cameras.main.setBackgroundColor('#151520');
 
         // 1. Draw Textures
-        // Player
         const pGfx = this.make.graphics({ x: 0, y: 0, add: false });
         pGfx.fillStyle(0x2b3950, 1); pGfx.fillRect(4, 8, 16, 24);
         pGfx.fillStyle(0xe0e6ed, 1); pGfx.fillRect(6, 0, 12, 12);
@@ -40,21 +39,18 @@ class MainScene extends Phaser.Scene {
         pGfx.fillStyle(0x8b1e3f, 1); pGfx.fillRect(2, 12, 4, 18);
         pGfx.generateTexture('playerTexture', 24, 32);
 
-        // Enemy (Faster Red Crawler)
         const eGfx = this.make.graphics({ x: 0, y: 0, add: false });
         eGfx.fillStyle(0x882222, 1); eGfx.fillRect(2, 6, 20, 18);
         eGfx.fillStyle(0xff2222, 1); eGfx.fillRect(4, 10, 4, 4); eGfx.fillRect(16, 10, 4, 4);
         eGfx.fillStyle(0x441111, 1); eGfx.fillRect(0, 20, 4, 4); eGfx.fillRect(20, 20, 4, 4);
         eGfx.generateTexture('enemyTexture', 24, 24);
 
-        // Platform Tile
         const tileGfx = this.make.graphics({ x: 0, y: 0, add: false });
         tileGfx.fillStyle(0x2a2a35, 1); tileGfx.fillRect(0, 0, 32, 32);
         tileGfx.fillStyle(0x3f3f50, 1); tileGfx.fillRect(0, 0, 32, 4);
         tileGfx.fillStyle(0x4a7c59, 1); tileGfx.fillRect(0, 0, 32, 2);
         tileGfx.generateTexture('tileTexture', 32, 32);
 
-        // Heart Icon
         const hGfx = this.make.graphics({ x: 0, y: 0, add: false });
         hGfx.fillStyle(0xff2255, 1);
         hGfx.fillRect(2, 0, 4, 2); hGfx.fillRect(8, 0, 4, 2);
@@ -123,15 +119,15 @@ class MainScene extends Phaser.Scene {
         this.spawnEnemy();
         this.spawnEnemy();
 
-        // 5. Physics & Enemy Constants
+        // 5. Physics Constants
         this.SPEED = 200;
         this.JUMP_VELOCITY = -420;
         this.WALL_SLIDE_SPEED = 70;
-        this.ENEMY_SPEED = 140; // Faster base speed
-        this.DETECTION_RANGE = 250; // Distance to start chasing
+        this.ENEMY_SPEED = 140;
+        this.DETECTION_RANGE = 250;
         this.isAttacking = false;
 
-        // 6. Keybindings (Arrows = Move, W = Jump, D = Hit)
+        // 6. Keybindings
         this.cursors = this.input.keyboard.createCursorKeys();
         this.keyW = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.W);
         this.keyD = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.D);
@@ -145,7 +141,6 @@ class MainScene extends Phaser.Scene {
         enemy.setCollideWorldBounds(true);
         enemy.body.setGravityY(900);
         enemy.hp = 2;
-        enemy.isChasing = false;
         enemy.patrolDir = Phaser.Math.Between(0, 1) === 0 ? 1 : -1;
     }
 
@@ -162,7 +157,6 @@ class MainScene extends Phaser.Scene {
             return;
         }
 
-        // Knockback
         if (player.x < enemy.x) {
             player.setVelocityX(-250);
         } else {
@@ -171,7 +165,6 @@ class MainScene extends Phaser.Scene {
         player.setVelocityY(-150);
         this.cameras.main.shake(100, 0.005);
 
-        // Invulnerability
         this.isInvulnerable = true;
         this.tweens.add({
             targets: player,
@@ -236,10 +229,15 @@ class MainScene extends Phaser.Scene {
             }
         });
 
+        // Track if a hit occurs to trigger weapon recoil
+        let hitEnemy = false;
+
         this.enemies.getChildren().forEach(enemy => {
             if (Phaser.Geom.Rectangle.Overlaps(attackBox, enemy.getBounds())) {
                 enemy.hp -= 1;
+                hitEnemy = true;
                 
+                // Knockback enemy away from player
                 enemy.setVelocityX(facingLeft ? -220 : 220);
                 enemy.setVelocityY(-120);
                 
@@ -251,6 +249,13 @@ class MainScene extends Phaser.Scene {
                 }
             }
         });
+
+        // --- Player Attack Recoil ---
+        if (hitEnemy) {
+            // Push player in the opposite direction they are facing
+            const recoilDirection = facingLeft ? 1 : -1;
+            this.player.setVelocityX(200 * recoilDirection);
+        }
     }
 
     update() {
@@ -291,11 +296,9 @@ class MainScene extends Phaser.Scene {
             }
         }
 
-        // --- Enemy AI: Fast Chasing Behavior ---
         this.enemies.getChildren().forEach(enemy => {
             const distToPlayer = Phaser.Math.Distance.Between(enemy.x, enemy.y, this.player.x, this.player.y);
 
-            // Chase when player is nearby
             if (distToPlayer < this.DETECTION_RANGE) {
                 if (this.player.x < enemy.x) {
                     enemy.setVelocityX(-this.ENEMY_SPEED);
@@ -305,7 +308,6 @@ class MainScene extends Phaser.Scene {
                     enemy.setFlipX(true);
                 }
             } else {
-                // Regular Patrol when player is out of sight
                 if (enemy.body.blocked.left) enemy.patrolDir = 1;
                 if (enemy.body.blocked.right) enemy.patrolDir = -1;
                 
