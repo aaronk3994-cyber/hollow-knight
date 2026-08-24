@@ -3,8 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Better Graphics Action Platformer</title>
-    <!-- Load Phaser 3 from CDN -->
+    <title>2D Action Game with Enemies</title>
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
     <style>
         body {
@@ -17,120 +16,161 @@
             height: 100vh;
         }
         canvas {
-            border: 2px solid #2a2a2a;
-            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+            border: 2px solid #333;
         }
     </style>
 </head>
 <body>
 
 <script>
-// --- Base64 Encoded Assets (Keep the file self-contained) ---
-// Minimalist 2D player spritesheet (16x16 frames: 2x stand, 4x run)
-const playerSpritesheetBase64 = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABAQMAAACLQG7TAAAAA1BMVEX/88+48a+rAAAAMElEQVR4XmNgGAWDFUjAgAMwAMUYA8QAxBhjQIwxBvQxBiCMMUEMY8IYAxoAwTAAYpgD7YqR3j8AAAAASUVORK5CYII=";
-// Small square particle texture (Base64 is long, so simplified here)
-const particleBase64 = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAYAAACp8Z5+AAAACXBIWXMAAAsTAAALEwEAmpwYAAAAMUlEQVR4nGNiYGBgYGRgcGdiYGD/wMCw4AMDA8MDA8OCpwwMDMcYGJj+/mVgePCNAwAA6QYND1u49+sAAAAASUVORK5CYII=";
-// A basic stone tile (Base64 data)
-const tileBase64 = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAYklEQVRYR2Nk4FjX/p+BDQEPhE2E04wKBlYw6gSjTjDqBKNUMBoJo5EgGgmikSAaCaKRICRBAjC+T70YmH8wMv//zzDgS+IURoNA4BSm8QYw4kviI0F4JAjZSaOBMRoJgxkAANuL+u4qZ28tAAAAAElEQVR4XmNgGAWjYBSMglEwCkbBSAMwAAAF6AAB75k7vAAAAABJRU5ErkJggg==";
-// A distant background layer (Base64)
-const bgBackBase64 = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGAAAABAAQMAAACr2M8uAAAABlBMVEX///9jXUvL4xO1AAAAAXRSTlMAQObYZgAAAB9JREFUeNpjYMACGP8fDP//Gv4fNPw/EPkf9v4/GIEDALiVOrvH5U66AAAAAElEQVR4XmNgGAWjYBSMglEwCkbBSANwAAAF6AAB75k7vAAAAABJRU5ErkJggg==";
-
 class MainScene extends Phaser.Scene {
     constructor() {
         super({ key: 'MainScene' });
     }
 
-    preload() {
-        // Load the Base64 assets
-        this.textures.addBase64('player', playerSpritesheetBase64);
-        this.textures.addBase64('particle', particleBase64);
-        this.textures.addBase64('tile', tileBase64);
-        this.textures.addBase64('bgBack', bgBackBase64);
-    }
-
     create() {
-        // --- 1. Background (Parallax) ---
-        // A simple layered background effect
-        this.bg = this.add.tileSprite(0, 0, 800, 600, 'bgBack').setOrigin(0, 0).setScrollFactor(0);
-        this.add.rectangle(0, 0, 800, 600, 0x111122, 0.5).setOrigin(0, 0).setScrollFactor(0);
+        this.cameras.main.setBackgroundColor('#151520');
 
-        // --- 2. Environment Setup (Tilemap) ---
-        // Create an array mapping tile types to locations
-        const levelData = [
-            [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-            [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-            [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-            [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-            [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1],
-            [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-            [1, 0, 0, 1, 1, 1, 1, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-            [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 1],
-            [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-            [1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-            [1, 0, 0, 0, 1, 1, 1, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-            [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1],
-            [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+        // 1. Draw Player Texture
+        const pGfx = this.make.graphics({ x: 0, y: 0, add: false });
+        pGfx.fillStyle(0x2b3950, 1); pGfx.fillRect(4, 8, 16, 24); // Body
+        pGfx.fillStyle(0xe0e6ed, 1); pGfx.fillRect(6, 0, 12, 12);  // Head
+        pGfx.fillStyle(0x00f0ff, 1); pGfx.fillRect(8, 4, 3, 3); pGfx.fillRect(13, 4, 3, 3); // Eyes
+        pGfx.fillStyle(0x8b1e3f, 1); pGfx.fillRect(2, 12, 4, 18); // Cloak
+        pGfx.generateTexture('playerTexture', 24, 32);
+
+        // 2. Draw Enemy Texture
+        const eGfx = this.make.graphics({ x: 0, y: 0, add: false });
+        eGfx.fillStyle(0x882222, 1); eGfx.fillRect(2, 6, 20, 18); // Shell
+        eGfx.fillStyle(0xff2222, 1); eGfx.fillRect(4, 10, 4, 4); eGfx.fillRect(16, 10, 4, 4); // Glowing eyes
+        eGfx.fillStyle(0x441111, 1); eGfx.fillRect(0, 20, 4, 4); eGfx.fillRect(20, 20, 4, 4); // Spikes/Legs
+        eGfx.generateTexture('enemyTexture', 24, 24);
+
+        // 3. Draw Platform Texture
+        const tileGfx = this.make.graphics({ x: 0, y: 0, add: false });
+        tileGfx.fillStyle(0x2a2a35, 1); tileGfx.fillRect(0, 0, 32, 32);
+        tileGfx.fillStyle(0x3f3f50, 1); tileGfx.fillRect(0, 0, 32, 4);
+        tileGfx.fillStyle(0x4a7c59, 1); tileGfx.fillRect(0, 0, 32, 2);
+        tileGfx.generateTexture('tileTexture', 32, 32);
+
+        // 4. Create Map
+        this.platforms = this.physics.add.staticGroup();
+        const level = [
+            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,0,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,1],
+            [1,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,1,1,1,0,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,0,0,0,0,0,1,1,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,1],
+            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
         ];
 
-        // Process data to create a static group of physics tiles
-        const TILE_SIZE = 32;
-        this.platforms = this.physics.add.staticGroup();
-        for (let row = 0; row < levelData.length; row++) {
-            for (let col = 0; col < levelData[row].length; col++) {
-                if (levelData[row][col] === 1) {
-                    this.platforms.create(col * TILE_SIZE, row * TILE_SIZE, 'tile').setOrigin(0).refreshBody();
+        for (let r = 0; r < level.length; r++) {
+            for (let c = 0; c < level[r].length; c++) {
+                if (level[r][c] === 1) {
+                    this.platforms.create(c * 32, r * 32, 'tileTexture').setOrigin(0).refreshBody();
                 }
             }
         }
 
-        // --- 3. Effects (Particles) ---
-        this.emitters = this.add.particles(0, 0, 'particle', {
-            speed: { min: -100, max: 100 },
-            angle: { min: 0, max: 360 },
-            scale: { start: 0.8, end: 0 },
-            blendMode: 'ADD',
-            lifespan: 300,
-            gravityY: 400,
-            quantity: 10,
-            emitting: false
-        });
-
-        // --- 4. Player Setup ---
-        this.player = this.physics.add.sprite(200, 300, 'player');
-        // This spritesheet is very basic, 
-        // so we define animation manually using frames.
+        // 5. Create Player
+        this.player = this.physics.add.sprite(100, 200, 'playerTexture');
         this.player.setCollideWorldBounds(true);
-        this.player.body.setGravityY(800);
-        this.player.body.setDragX(50); // Natural slowing
+        this.player.body.setGravityY(900);
+        this.physics.add.collider(this.player, this.platforms);
 
-        // Defines simple animations using the Base64 spritesheet
-        this.anims.create({
-            key: 'walk',
-            frames: [
-                { key: 'player', frame: 0 },
-                { key: 'player', frame: 1 }
-            ],
-            frameRate: 6,
-            repeat: -1
+        // 6. Enemies & Spawning System
+        this.enemies = this.physics.add.group();
+        this.physics.add.collider(this.enemies, this.platforms);
+        
+        // Hurt player on collision with enemy
+        this.physics.add.overlap(this.player, this.enemies, this.hitPlayer, null, this);
+
+        // Spawn points across the map
+        this.spawnPoints = [
+            { x: 400, y: 100 },
+            { x: 550, y: 100 },
+            { x: 200, y: 200 }
+        ];
+
+        // Timer to spawn an enemy every 4 seconds
+        this.time.addEvent({
+            delay: 4000,
+            callback: this.spawnEnemy,
+            callbackScope: this,
+            loop: true
         });
 
-        // --- 5. Interactions ---
-        // Collision
-        this.physics.add.collider(this.player, this.platforms, this.handlePlayerCollision, null, this);
+        // Initial Spawns
+        this.spawnEnemy();
+        this.spawnEnemy();
 
-        // Movement variables
-        this.SPEED = 240;
-        this.JUMP_VELOCITY = -450;
-        this.WALL_SLIDE_SPEED = 60;
-        this.canWallJump = false;
-        this.lastOnFloor = false; // For detecting landing
+        // 7. Controls & Variables
+        this.SPEED = 200;
+        this.JUMP_VELOCITY = -420;
+        this.WALL_SLIDE_SPEED = 70;
 
-        // Input
         this.cursors = this.input.keyboard.createCursorKeys();
         this.wasd = this.input.keyboard.addKeys({
             up: Phaser.Input.Keyboard.KeyCodes.W,
             left: Phaser.Input.Keyboard.KeyCodes.A,
-            right: Phaser.Input.Keyboard.KeyCodes.D
+            right: Phaser.Input.Keyboard.KeyCodes.D,
+            space: Phaser.Input.Keyboard.KeyCodes.SPACE,
+            attack: Phaser.Input.Keyboard.KeyCodes.J
+        });
+    }
+
+    spawnEnemy() {
+        // Cap max enemies on screen to 5
+        if (this.enemies.getChildren().length >= 5) return;
+
+        const point = Phaser.Utils.Array.GetRandom(this.spawnPoints);
+        const enemy = this.enemies.create(point.x, point.y, 'enemyTexture');
+        enemy.setCollideWorldBounds(true);
+        enemy.body.setGravityY(900);
+        enemy.setVelocityX(Phaser.Math.Between(0, 1) === 0 ? 60 : -60);
+        enemy.setBounce(1, 0); // Bounce off walls
+        enemy.hp = 2;
+    }
+
+    hitPlayer(player, enemy) {
+        // Simple player knockback on hit
+        if (player.x < enemy.x) {
+            player.setVelocityX(-250);
+        } else {
+            player.setVelocityX(250);
+        }
+        player.setVelocityY(-150);
+        this.cameras.main.shake(100, 0.005);
+    }
+
+    attack() {
+        const attackRange = 40;
+        const attackBox = new Phaser.Geom.Rectangle(
+            this.player.flipX ? this.player.x - attackRange : this.player.x,
+            this.player.y - 10,
+            attackRange,
+            30
+        );
+
+        // Flash attack effect
+        const swing = this.add.rectangle(attackBox.x + attackBox.width/2, attackBox.y + attackBox.height/2, attackBox.width, attackBox.height, 0x00f0ff, 0.6);
+        this.time.delayedCall(80, () => swing.destroy());
+
+        // Check hits on enemies
+        this.enemies.getChildren().forEach(enemy => {
+            if (Phaser.Geom.Rectangle.Overlaps(attackBox, enemy.getBounds())) {
+                enemy.hp -= 1;
+                enemy.setTint(0xffffff); // White flash on hit
+                this.time.delayedCall(100, () => enemy.clearTint());
+
+                if (enemy.hp <= 0) {
+                    enemy.destroy();
+                }
+            }
         });
     }
 
@@ -139,81 +179,68 @@ class MainScene extends Phaser.Scene {
         const onWallLeft = this.player.body.blocked.left;
         const onWallRight = this.player.body.blocked.right;
 
-        const leftPressed = this.cursors.left.isDown || this.wasd.left.isDown;
-        const rightPressed = this.cursors.right.isDown || this.wasd.right.isDown;
-        const jumpPressed = Phaser.Input.Keyboard.JustDown(this.cursors.up) || 
-                            Phaser.Input.Keyboard.JustDown(this.wasd.up);
+        const left = this.cursors.left.isDown || this.wasd.left.isDown;
+        const right = this.cursors.right.isDown || this.wasd.right.isDown;
+        const jump = Phaser.Input.Keyboard.JustDown(this.cursors.up) || 
+                     Phaser.Input.Keyboard.JustDown(this.wasd.up) || 
+                     Phaser.Input.Keyboard.JustDown(this.wasd.space);
+        const attackPressed = Phaser.Input.Keyboard.JustDown(this.wasd.attack);
+
+        // Attack Input
+        if (attackPressed) {
+            this.attack();
+        }
 
         // Horizontal Movement
-        if (leftPressed) {
+        if (left) {
             this.player.setVelocityX(-this.SPEED);
-            this.player.flipX = true;
-            if (onFloor) this.player.anims.play('walk', true);
-        } else if (rightPressed) {
+            this.player.setFlipX(true);
+        } else if (right) {
             this.player.setVelocityX(this.SPEED);
-            this.player.flipX = false;
-            if (onFloor) this.player.anims.play('walk', true);
+            this.player.setFlipX(false);
         } else {
-            this.player.setVelocityX(this.player.body.velocity.x * 0.92); // Quick deceleration
-            if (onFloor) this.player.anims.stop();
+            this.player.setVelocityX(0);
         }
 
         // Jump
-        if (jumpPressed && onFloor) {
+        if (jump && onFloor) {
             this.player.setVelocityY(this.JUMP_VELOCITY);
-            this.player.anims.stop();
         }
 
-        // Wall Sliding & Wall Jumping
-        let isSliding = false;
+        // Wall Slide & Wall Jump
         if ((onWallLeft || onWallRight) && !onFloor && this.player.body.velocity.y > 0) {
             this.player.setVelocityY(Math.min(this.player.body.velocity.y, this.WALL_SLIDE_SPEED));
-            isSliding = true;
-            this.player.anims.stop();
             
-            // Wall Jump execution
-            if (jumpPressed) {
+            if (jump) {
                 const wallDir = onWallLeft ? 1 : -1;
-                this.player.setVelocityX(this.SPEED * 1.3 * wallDir);
-                this.player.setVelocityY(this.JUMP_VELOCITY * 0.95);
+                this.player.setVelocityX(this.SPEED * wallDir);
+                this.player.setVelocityY(this.JUMP_VELOCITY);
             }
         }
 
-        // --- Visual Effects Update ---
-        // Parallax background scroll
-        this.bg.tilePositionX = this.player.x * 0.2;
-
-        // Detect landing for particle effect and slight screen shake
-        if (onFloor && !this.lastOnFloor && this.player.body.velocity.y > 50) {
-            this.cameras.main.shake(100, 0.002);
-            this.emitters.emitParticleAt(this.player.x, this.player.y + 16, 5);
-        }
-        this.lastOnFloor = onFloor;
-    }
-
-    handlePlayerCollision() {
-        // Custom collision logic if needed, 
-        // Phaser Arcade Physics handles standard interaction automatically.
+        // Enemy patrol behavior (turn around when touching walls)
+        this.enemies.getChildren().forEach(enemy => {
+            if (enemy.body.blocked.left) {
+                enemy.setVelocityX(60);
+            } else if (enemy.body.blocked.right) {
+                enemy.setVelocityX(-60);
+            }
+        });
     }
 }
 
-// Phaser Game Configuration
 const config = {
     type: Phaser.AUTO,
     width: 800,
-    height: 600,
-    parent: 'game-container',
+    height: 320,
     physics: {
         default: 'arcade',
-        arcade: {
-            gravity: { y: 0 },
-            debug: false
-        }
+        arcade: { gravity: { y: 0 }, debug: false }
     },
     scene: MainScene
 };
 
-const game = new Phaser.Game(config);
+new Phaser.Game(config);
 </script>
 
 </body>
