@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>2D Action Game</title>
+    <title>2D Action Game - Slashing Effect</title>
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
     <style>
         body {
@@ -107,8 +107,9 @@ class MainScene extends Phaser.Scene {
         this.SPEED = 200;
         this.JUMP_VELOCITY = -420;
         this.WALL_SLIDE_SPEED = 70;
+        this.isAttacking = false;
 
-        // 8. Custom Keybindings (Arrows to move, W to jump, D to hit)
+        // 8. Custom Keybindings
         this.cursors = this.input.keyboard.createCursorKeys();
         this.keyW = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.W);
         this.keyD = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.D);
@@ -137,20 +138,67 @@ class MainScene extends Phaser.Scene {
     }
 
     attack() {
-        const attackRange = 40;
+        if (this.isAttacking) return;
+        this.isAttacking = true;
+
+        const attackRange = 45;
+        const facingLeft = this.player.flipX;
+        
+        // Setup hitbox area
         const attackBox = new Phaser.Geom.Rectangle(
-            this.player.flipX ? this.player.x - attackRange : this.player.x,
-            this.player.y - 10,
+            facingLeft ? this.player.x - attackRange - 10 : this.player.x + 10,
+            this.player.y - 20,
             attackRange,
-            30
+            40
         );
 
-        const swing = this.add.rectangle(attackBox.x + attackBox.width/2, attackBox.y + attackBox.height/2, attackBox.width, attackBox.height, 0x00f0ff, 0.6);
-        this.time.delayedCall(80, () => swing.destroy());
+        // --- Vector Slashing Arc Animation ---
+        const slashGfx = this.add.graphics();
+        let frame = 0;
 
+        // Animation steps over 120ms
+        const animTimer = this.time.addEvent({
+            delay: 20,
+            repeat: 5,
+            callback: () => {
+                slashGfx.clear();
+                frame++;
+
+                const dir = facingLeft ? -1 : 1;
+                const startX = this.player.x + (10 * dir);
+                const startY = this.player.y;
+
+                // Draw Crescent Arc
+                slashGfx.lineStyle(4 - (frame * 0.5), 0x00f0ff, 1 - (frame * 0.15));
+                slashGfx.fillStyle(0xffffff, 0.8 - (frame * 0.1));
+
+                slashGfx.beginPath();
+                slashGfx.arc(
+                    startX, 
+                    startY, 
+                    25 + (frame * 3), 
+                    Phaser.Math.DegToRad(facingLeft ? 120 - (frame * 25) : -60 + (frame * 25)), 
+                    Phaser.Math.DegToRad(facingLeft ? 240 - (frame * 10) : 60 + (frame * 10)), 
+                    false
+                );
+                slashGfx.strokePath();
+
+                if (frame >= 5) {
+                    slashGfx.destroy();
+                    this.isAttacking = false;
+                }
+            }
+        });
+
+        // Check for hits against enemies
         this.enemies.getChildren().forEach(enemy => {
             if (Phaser.Geom.Rectangle.Overlaps(attackBox, enemy.getBounds())) {
                 enemy.hp -= 1;
+                
+                // Recoil / Knockback effect on enemy
+                enemy.setVelocityX(facingLeft ? -180 : 180);
+                enemy.setVelocityY(-100);
+                
                 enemy.setTint(0xffffff);
                 this.time.delayedCall(100, () => enemy.clearTint());
 
@@ -166,7 +214,6 @@ class MainScene extends Phaser.Scene {
         const onWallLeft = this.player.body.blocked.left;
         const onWallRight = this.player.body.blocked.right;
 
-        // Custom Inputs
         const left = this.cursors.left.isDown;
         const right = this.cursors.right.isDown;
         const jump = Phaser.Input.Keyboard.JustDown(this.keyW);
