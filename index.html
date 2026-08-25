@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>2D Action Game - Slower Enemies</title>
+    <title>2D Action Game - Adjusted Speed</title>
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
     <style>
         body {
@@ -119,14 +119,12 @@ class MainScene extends Phaser.Scene {
         this.spawnEnemy();
         this.spawnEnemy();
 
-        // 5. Physics & Speed Controls
-        this.SPEED = 200;
+        // 5. Physics & Speed Constants
+        this.SPEED = 200;           // Player Speed
+        this.ENEMY_SPEED = 170;     // Enemy Speed (Just a little slower than player)
         this.JUMP_VELOCITY = -420;
         this.WALL_SLIDE_SPEED = 70;
-        
-        // Reduced enemy speed for slower chasing
-        this.ENEMY_SPEED = 60; 
-        this.DETECTION_RANGE = 200;
+        this.DETECTION_RANGE = 220;
         this.isAttacking = false;
 
         // 6. Keybindings
@@ -294,7 +292,7 @@ class MainScene extends Phaser.Scene {
             }
         }
 
-        // --- Slowed Enemy Movement ---
+        // --- Enemy AI ---
         this.enemies.getChildren().forEach(enemy => {
             const distToPlayer = Phaser.Math.Distance.Between(enemy.x, enemy.y, this.player.x, this.player.y);
 
