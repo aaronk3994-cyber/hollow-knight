@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>2D Action Game - Weapon Recoil</title>
+    <title>2D Action Game - Slower Enemies</title>
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
     <style>
         body {
@@ -119,12 +119,14 @@ class MainScene extends Phaser.Scene {
         this.spawnEnemy();
         this.spawnEnemy();
 
-        // 5. Physics Constants
+        // 5. Physics & Speed Controls
         this.SPEED = 200;
         this.JUMP_VELOCITY = -420;
         this.WALL_SLIDE_SPEED = 70;
-        this.ENEMY_SPEED = 140;
-        this.DETECTION_RANGE = 250;
+        
+        // Reduced enemy speed for slower chasing
+        this.ENEMY_SPEED = 60; 
+        this.DETECTION_RANGE = 200;
         this.isAttacking = false;
 
         // 6. Keybindings
@@ -229,7 +231,6 @@ class MainScene extends Phaser.Scene {
             }
         });
 
-        // Track if a hit occurs to trigger weapon recoil
         let hitEnemy = false;
 
         this.enemies.getChildren().forEach(enemy => {
@@ -237,9 +238,8 @@ class MainScene extends Phaser.Scene {
                 enemy.hp -= 1;
                 hitEnemy = true;
                 
-                // Knockback enemy away from player
-                enemy.setVelocityX(facingLeft ? -220 : 220);
-                enemy.setVelocityY(-120);
+                enemy.setVelocityX(facingLeft ? -180 : 180);
+                enemy.setVelocityY(-100);
                 
                 enemy.setTint(0xffffff);
                 this.time.delayedCall(100, () => enemy.clearTint());
@@ -250,11 +250,9 @@ class MainScene extends Phaser.Scene {
             }
         });
 
-        // --- Player Attack Recoil ---
         if (hitEnemy) {
-            // Push player in the opposite direction they are facing
             const recoilDirection = facingLeft ? 1 : -1;
-            this.player.setVelocityX(200 * recoilDirection);
+            this.player.setVelocityX(150 * recoilDirection);
         }
     }
 
@@ -296,6 +294,7 @@ class MainScene extends Phaser.Scene {
             }
         }
 
+        // --- Slowed Enemy Movement ---
         this.enemies.getChildren().forEach(enemy => {
             const distToPlayer = Phaser.Math.Distance.Between(enemy.x, enemy.y, this.player.x, this.player.y);
 
