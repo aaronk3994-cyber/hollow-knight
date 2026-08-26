@@ -9,7 +9,7 @@
         body {
             margin: 0;
             padding: 0;
-            background-color: #111;
+            background-color: #200;
             display: flex;
             justify-content: center;
             align-items: center;
@@ -89,7 +89,7 @@ class MainScene extends Phaser.Scene {
         this.player.body.setGravityY(900);
         this.physics.add.collider(this.player, this.platforms);
 
-        this.hp = 5;
+        this.hp = 10;
         this.isInvulnerable = false;
 
         this.hearts = [];
@@ -121,7 +121,7 @@ class MainScene extends Phaser.Scene {
 
         // 5. Physics & Speed Constants
         this.SPEED = 200;           // Player Speed
-        this.ENEMY_SPEED = 170;     // Enemy Speed (Just a little slower than player)
+        this.ENEMY_SPEED = 120;     // Enemy Speed (Just a little slower than player)
         this.JUMP_VELOCITY = -420;
         this.WALL_SLIDE_SPEED = 70;
         this.DETECTION_RANGE = 220;
